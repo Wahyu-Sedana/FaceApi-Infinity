@@ -42,7 +42,7 @@ def postImageOnCollection(file_stream, external_image_id):
         },
         ExternalImageId= external_image_id,
         QualityFilter="AUTO",
-        MaxFaces=3,
+        MaxFaces=2,
         DetectionAttributes=['ALL']
     )
     return response
@@ -99,4 +99,4 @@ def checkFace():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=5000)

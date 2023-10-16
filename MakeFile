@@ -1,0 +1,7 @@
+setup:
+	@make build
+	@make up 
+build:
+	docker build -t flask_face_api .
+up:
+	docker run -it -p 5000:5000 -d flask_face_api  
