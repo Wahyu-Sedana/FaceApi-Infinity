@@ -66,10 +66,17 @@ def indexFace():
         external_image_id = file.filename
         external_image_id = external_image_id.split('.')[0] 
         face_records = postImageOnCollection(file.read(), external_image_id)
+        
+        response = verifyUser(file.read())
+        face_matches = response.get('FaceMatches', [])
         if face_records:
-            # Jika tidak ada wajah yang terdeteksi dengan ExternalImageId yang sama, maka upload gambar ke S3
-            uploadToS3(file, s3_folder, file.filename)
-            return jsonify({'result': 'Face indexed successfully', 'user_id': external_image_id})
+            if face_matches:
+                external_image_id = face_matches[0].get('Face', {}).get('ExternalImageId', 'Not available')
+                return jsonify({'result': 'Face match found', 'user_id': external_image_id})
+            else:
+                # Jika tidak ada wajah yang terdeteksi dengan ExternalImageId yang sama, maka upload gambar ke S3
+                uploadToS3(file, s3_folder, file.filename)
+                return jsonify({'result': 'Face indexed successfully', 'user_id': external_image_id})
         else:
             return jsonify({'error': 'No face detected in the image'})
     except Exception as e:
