@@ -10,6 +10,8 @@ aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 collection_id = os.getenv("COLLECTION_ID")
 region = os.getenv("REGION")
 
+print(aws_access_key_id, aws_secret_access_key, region, collection_id)
+
 s3_folder = os.getenv("S3_FOLDER")
 s3_bucket = os.getenv("S3_BUCKET")
 
@@ -35,55 +37,62 @@ def verifyUser(file_stream):
     return response
 
 def postImageOnCollection(file_stream, external_image_id):
-    response = rekognition.index_faces(
-        CollectionId= collection_id,
-        Image={
-            'Bytes': file_stream
-        },
-        ExternalImageId= external_image_id,
-        QualityFilter="AUTO",
-        MaxFaces=2,
-        DetectionAttributes=['ALL']
-    )
-    return response
+    try:
+        # Simpan gambar ke Amazon S3
+        s3_dest = s3_folder + external_image_id + '.jpeg' 
+        s3.put_object(
+            Bucket=s3_bucket,
+            Key=s3_dest,
+            Body=file_stream,
+            ACL='public-read',
+            ContentType='image/jpeg'
+        )
 
-def uploadToS3(file_stream, folder_name, file_name):
-    response = s3.upload_fileobj(file_stream, s3_bucket, f"{folder_name}/{file_name}")
-    return response
+        # Tambahkan gambar ke koleksi Rekognition
+        response = rekognition.index_faces(
+            CollectionId=collection_id,
+            Image={
+                'S3Object': {
+                    'Bucket': s3_bucket,
+                    'Name': s3_dest
+                }
+            },
+            ExternalImageId=external_image_id,
+            QualityFilter="AUTO",
+            MaxFaces=1,
+            DetectionAttributes=['ALL']
+        )
+        return response
+    except Exception as e:
+        print(str(e))
+        return None
 
-
-@app.route('/post', methods=['POST'])
-def indexFace():
+@app.route('/upload', methods=['POST'])
+def uploadImage():
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'})
 
     file = request.files['file']
-    
+
     if file.filename == '':
         return jsonify({'error': 'No selected file'})
-    
+
     try:
-        external_image_id = file.filename
-        external_image_id = external_image_id.split('.')[0] 
-        face_records = postImageOnCollection(file.read(), external_image_id)
-        
-        response = verifyUser(file.read())
-        face_matches = response.get('FaceMatches', [])
-        if face_records:
-            if face_matches:
-                external_image_id = face_matches[0].get('Face', {}).get('ExternalImageId', 'Not available')
-                return jsonify({'result': 'Face match found', 'user_id': external_image_id})
-            else:
-                # Jika tidak ada wajah yang terdeteksi dengan ExternalImageId yang sama, maka upload gambar ke S3
-                uploadToS3(file, s3_folder, file.filename)
-                return jsonify({'result': 'Face indexed successfully', 'user_id': external_image_id})
+        file_stream = file.read()
+        external_image_id = file.filename.split('.')[0]
+
+        response = postImageOnCollection(file_stream, external_image_id)
+
+        if response is not None:
+            return jsonify({'result': 'Image uploaded to S3 and added to Rekognition collection'})
         else:
-            return jsonify({'error': 'No face detected in the image'})
+            return jsonify({'error': 'Failed to upload to S3 or add to Rekognition collection'})
+
     except Exception as e:
         return jsonify({'error': str(e)})
 
 
-@app.route('/check-face', methods=['POST'])
+@app.route('/check-face', methods=['POST']) 
 def checkFace():
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'})
