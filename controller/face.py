@@ -10,6 +10,9 @@ def uploadImage():
 
     if file.filename == '':
         return error_response('No selected file', status=400)
+    
+    if not is_valid_filename(file.filename):
+        return error_response('Invalid filename', status=400)
 
     try:
         file_stream = file.read()

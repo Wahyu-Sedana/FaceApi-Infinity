@@ -10,6 +10,10 @@ def verifyUser(file_stream):
     )
     return response
 
+def is_valid_filename(filename):
+    pattern = r'^[a-zA-Z0-9_\-\.]+$'
+    return re.match(pattern, filename) is not None
+
 def postImageOnCollection(file_stream, external_image_id):
     try:
         # Simpan gambar ke Amazon S3
