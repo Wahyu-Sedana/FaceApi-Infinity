@@ -1,43 +1,46 @@
-from app import rekognition, s3
-from config.credentials import *
+from helper.response import *
+from flask import request
+from helper.utils import *
 
-def verifyUser(file_stream):
-    response = rekognition.search_faces_by_image(
-        CollectionId= collection_id,
-        FaceMatchThreshold= 95,
-        Image={
-            'Bytes': file_stream
-        }
-    )
-    return response
+def uploadImage():
+    if 'file' not in request.files:
+        return error_response('No file part', status=400)
 
-def postImageOnCollection(file_stream, external_image_id):
+    file = request.files['file']
+
+    if file.filename == '':
+        return error_response('No selected file', status=400)
+
     try:
-        # Simpan gambar ke Amazon S3
-        s3_dest = s3_folder + external_image_id + '.jpeg' 
-        s3.put_object(
-            Bucket=s3_bucket,
-            Key=s3_dest,
-            Body=file_stream,
-            ACL='public-read',
-            ContentType='image/jpeg'
-        )
+        file_stream = file.read()
+        external_image_id = file.filename.split('.')[0]
 
-        # Tambahkan gambar ke koleksi Rekognition
-        response = rekognition.index_faces(
-            CollectionId=collection_id,
-            Image={
-                'S3Object': {
-                    'Bucket': s3_bucket,
-                    'Name': s3_dest
-                }
-            },
-            ExternalImageId=external_image_id,
-            QualityFilter="AUTO",
-            MaxFaces=1,
-            DetectionAttributes=['ALL']
-        )
-        return response
+        response = postImageOnCollection(file_stream, external_image_id)
+
+        if response is not None:
+            return success_response("Image uploaded to S3 and added to Rekognition collection", status=200)
+        else:
+            return error_response("Failed to upload to S3 or add to Rekognition collection", status=400)
+
     except Exception as e:
-        print(str(e))
-        return None
+        return error_response(str(e), status=500)
+    
+def checkFace():
+    if 'file' not in request.files:
+        return error_response('No file part', status=400)
+
+    file = request.files['file']
+
+    if file.filename == '':
+        return error_response('No selected file', status=400)
+
+    try:
+        response = verifyUser(file.read())
+        face_matches = response.get('FaceMatches', [])
+        if face_matches:
+            external_image_id = face_matches[0].get('Face', {}).get('ExternalImageId', 'Not available')
+            return check_face_success('Face match found', status=200, external_image_id=external_image_id, match=True)
+        else:
+            return check_face_success('No face match found', status=200, external_image_id='Not available', match=False)
+    except Exception as e:
+        return error_response(str(e), status=500)
