@@ -1,6 +1,8 @@
 from helper.response import *
 from flask import request
 from helper.utils import *
+from config.database import mysql
+
 
 def uploadImage():
     if 'file' not in request.files or 'token' not in request.form:
@@ -25,12 +27,13 @@ def uploadImage():
     except Exception as e:
         return error_response(str(e), status=500)
 
-    
+
 def checkFace():
-    if 'file' not in request.files:
+    if 'file' not in request.files and 'sesi' not in request.form:
         return error_response('No file part', status=400)
 
     file = request.files['file']
+    sesi = request.form['sesi']
 
     if file.filename == '':
         return error_response('No selected file', status=400)
@@ -39,7 +42,25 @@ def checkFace():
         response = verifyUser(file.read())
         face_matches = response.get('FaceMatches', [])
         if face_matches:
-            external_image_id = face_matches[0].get('Face', {}).get('ExternalImageId', 'Not available')
+            external_image_id = face_matches[0].get(
+                'Face', {}).get('ExternalImageId', 'Not available')
+            cur = mysql.connection.cursor()
+            cur.execute(
+                "SELECT registrations.id FROM registrations INNER JOIN transactions ON registrations.transaction_id = transactions.id  WHERE event_id = 1 AND event_level_id = 5 AND registrations.user_id = %s AND transactions.status = 'paid'", (external_image_id,))
+            reg_id = cur.fetchone()
+            print(reg_id[0])
+            if reg_id:
+                if sesi == '1':
+                    response1 = cur.execute(
+                        "UPDATE registrations SET attendance = 1, check_first = CURRENT_TIMESTAMP WHERE id = %s", (reg_id[0],))
+                    print(response1)
+                    mysql.connection.commit()
+                elif sesi == '2':
+                    response2 = cur.execute(
+                        "UPDATE registrations SET check_second = CURRENT_TIMESTAMP WHERE id = %s", (reg_id[0],))
+                    print(response2)
+                    mysql.connection.commit()
+            cur.close()
             return check_face_success('Face match found', status=200, external_image_id=external_image_id, match=True)
         else:
             return check_face_success('No face match found', status=200, external_image_id='Not available', match=False)
