@@ -2,6 +2,9 @@ from helper.response import *
 from flask import request
 from helper.utils import *
 from config.database import mysql
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
 
 def uploadImage():
@@ -21,6 +24,13 @@ def uploadImage():
         file_stream = file.read()
         response = postImageOnCollection(file_stream, token)
         if response:
+            s3_url = os.getenv("S3_URL")
+            usr_id = response["FaceRecords"][0]["Face"]["ExternalImageId"]
+            img_url = s3_url+usr_id+'.jpeg'
+            cur = mysql.connection.cursor()
+            updateUrlUser = cur.execute(
+                "UPDATE users SET face_id = %s WHERE id = %s", (img_url, usr_id))
+            mysql.connection.commit()
             return success_response("Image uploaded to S3 and added to Rekognition collection", status=200)
         else:
             return error_response("Failed to upload to S3 or add to Rekognition collection", status=500)
@@ -46,7 +56,7 @@ def checkFace():
                 'Face', {}).get('ExternalImageId', 'Not available')
             cur = mysql.connection.cursor()
             cur.execute(
-                "SELECT registrations.id FROM registrations INNER JOIN transactions ON registrations.transaction_id = transactions.id  WHERE event_id = 1 AND event_level_id = 5 AND registrations.user_id = %s AND transactions.status = 'paid'", (external_image_id,))
+                "SELECT registrations.id FROM registrations INNER JOIN transactions ON registrations.transaction_id = transactions.id INNER JOIN events ON registrations.event_id = events.id WHERE events.type = 'seminar' AND event_level_id = 5 AND registrations.user_id = %s AND transactions.status = 'paid'", (external_image_id,))
             reg_id = cur.fetchone()
             print(reg_id[0])
             if reg_id:
