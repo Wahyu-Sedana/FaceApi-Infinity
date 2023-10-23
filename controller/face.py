@@ -54,6 +54,7 @@ def checkFace():
         if face_matches:
             external_image_id = face_matches[0].get(
                 'Face', {}).get('ExternalImageId', 'Not available')
+
             cur = mysql.connection.cursor()
             cur.execute(
                 "SELECT registrations.id, participants.name FROM registrations INNER JOIN participants ON registrations.id = participants.registration_id INNER JOIN transactions ON registrations.transaction_id = transactions.id INNER JOIN events ON registrations.event_id = events.id WHERE events.type = 'seminar' AND event_level_id = 5 AND registrations.user_id = %s AND transactions.status = 'paid'", (external_image_id,))
