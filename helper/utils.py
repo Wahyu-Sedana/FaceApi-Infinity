@@ -1,4 +1,5 @@
 from config.credentials import *
+from helper.response import *
 import jwt
 import os
 from dotenv import load_dotenv
@@ -29,15 +30,13 @@ def decryptJWT(token):
         # print('user_id_dec' + str(payload['sub']))
         return str(payload['sub'])
     except jwt.ExpiredSignatureError:
-        return print("Token telah kedaluwarsa")
+        return False
     except jwt.InvalidTokenError:
-        return print("Token tidak valid")
+        return False
 
 
 def postImageOnCollection(file_stream, token):
     try:
-        # print('token')
-        # print(token)
         file_name = decryptJWT(token)
         # print('user_id_hel' + str(file_name))
         # Simpan gambar ke Amazon S3
@@ -66,6 +65,8 @@ def postImageOnCollection(file_stream, token):
                 DetectionAttributes=['ALL']
             )
             return response
+        else:
+            return False
     except Exception as e:
         print(str(e))
         return None

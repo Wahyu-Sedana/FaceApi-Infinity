@@ -28,12 +28,12 @@ def uploadImage():
             usr_id = response["FaceRecords"][0]["Face"]["ExternalImageId"]
             img_url = s3_url+usr_id+'.jpeg'
             cur = mysql.connection.cursor()
-            updateUrlUser = cur.execute(
+            cur.execute(
                 "UPDATE users SET face_id = %s WHERE id = %s", (img_url, usr_id))
             mysql.connection.commit()
-            return success_response("Image uploaded to S3 and added to Rekognition collection", status=200)
+            return success_response("Face ID success uploaded", status=200)
         else:
-            return error_response("Failed to upload to S3 or add to Rekognition collection", status=500)
+            return error_response("Failed to upload Face ID", status=500)
     except Exception as e:
         return error_response(str(e), status=500)
 
