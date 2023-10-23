@@ -56,23 +56,25 @@ def checkFace():
                 'Face', {}).get('ExternalImageId', 'Not available')
             cur = mysql.connection.cursor()
             cur.execute(
-                "SELECT registrations.id FROM registrations INNER JOIN transactions ON registrations.transaction_id = transactions.id INNER JOIN events ON registrations.event_id = events.id WHERE events.type = 'seminar' AND event_level_id = 5 AND registrations.user_id = %s AND transactions.status = 'paid'", (external_image_id,))
+                "SELECT registrations.id, participants.name FROM registrations INNER JOIN participants ON registrations.id = participants.registration_id INNER JOIN transactions ON registrations.transaction_id = transactions.id INNER JOIN events ON registrations.event_id = events.id WHERE events.type = 'seminar' AND event_level_id = 5 AND registrations.user_id = %s AND transactions.status = 'paid'", (external_image_id,))
             reg_id = cur.fetchone()
-            print(reg_id[0])
+            print(reg_id)
             if reg_id:
                 if sesi == '1':
                     response1 = cur.execute(
                         "UPDATE registrations SET attendance = 1, check_first = CURRENT_TIMESTAMP WHERE id = %s", (reg_id[0],))
+                    print("response1 : ")
                     print(response1)
                     mysql.connection.commit()
                 elif sesi == '2':
                     response2 = cur.execute(
                         "UPDATE registrations SET check_second = CURRENT_TIMESTAMP WHERE id = %s", (reg_id[0],))
+                    print("response2 : ")
                     print(response2)
                     mysql.connection.commit()
             cur.close()
-            return check_face_success('Face match found', status=200, external_image_id=external_image_id, match=True)
+            return check_face_success('Face match found', reg_id[1], status=200, match=True)
         else:
-            return check_face_success('No face match found', status=200, external_image_id='Not available', match=False)
+            return check_face_success('No face match found', '', status=200, match=False)
     except Exception as e:
         return error_response(str(e), status=500)
