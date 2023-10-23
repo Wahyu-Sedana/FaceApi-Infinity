@@ -52,8 +52,6 @@ def checkFace():
         response = verifyUser(file.read())
         face_matches = response.get('FaceMatches', [])
         if face_matches:
-            external_image_id = face_matches[0].get(
-                'Face', {}).get('ExternalImageId', 'Not available')
             cur = mysql.connection.cursor()
             cur.execute(
                 "SELECT registrations.id FROM registrations INNER JOIN transactions ON registrations.transaction_id = transactions.id INNER JOIN events ON registrations.event_id = events.id WHERE events.type = 'seminar' AND event_level_id = 5 AND registrations.user_id = %s AND transactions.status = 'paid'", (external_image_id,))
@@ -71,8 +69,8 @@ def checkFace():
                     print(response2)
                     mysql.connection.commit()
             cur.close()
-            return check_face_success('Face match found', status=200, external_image_id=external_image_id, match=True)
+            return check_face_success('Face match found', status=200, match=True)
         else:
-            return check_face_success('No face match found', status=200, external_image_id='Not available', match=False)
+            return check_face_success('No face match found', status=200, match=False)
     except Exception as e:
         return error_response(str(e), status=500)
