@@ -69,4 +69,4 @@ def postImageOnCollection(file_stream, token):
             return False
     except Exception as e:
         print(str(e))
-        return None
+        return print(str(e))
