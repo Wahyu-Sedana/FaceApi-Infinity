@@ -11,9 +11,9 @@ def error_response(message, status):
     return make_response(response, status)
 
 
-def check_face_success(message, name, status, match):
+def check_face_success(message, name, status, match, is_participant):
     response = jsonify({'success': True, 'message': message,
-                       'name': name, 'status': status, 'match': match})
+                       'name': name, 'status': status, 'match': match, 'is_participant': is_participant})
     return make_response(response, status)
 
 
@@ -21,3 +21,4 @@ def check_face_error(message, status, match):
     response = jsonify({'success': False, 'message': message,
                         'status': status, 'match': match})
     return make_response(response, status)
+
